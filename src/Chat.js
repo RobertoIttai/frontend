@@ -2,9 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 
 export default function Chat() {
   const [messages, setMessages] = useState([
-    { id: 1, text: 'Hola, ¿en qué puedo ayudarte?', sender: 'bot' },
+    { id: 1, text: '¡Hola! Soy tu asistente de análisis deportivo. Pregúntame sobre datos, estrategias o dame un tema para que te dé un pick.', sender: 'bot' },
   ]);
   const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false); // New loading state
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -20,39 +21,56 @@ export default function Chat() {
 
     const userMessage = input;
 
-    // Agrega mensaje del usuario
+    // Add user message to state immediately
     setMessages(prev => [
       ...prev,
       { id: Date.now(), text: userMessage, sender: 'user' },
     ]);
 
-    setInput('');
+    setInput(''); // Clear input field
+    setLoading(true); // Start loading
 
     try {
-      const response = await fetch('https://pickdeldia-mvp-1.onrender.com/chat', {
+      // --- IMPORTANT: Replace with your actual Render backend URL ---
+      // This URL should point to your backend service on Render
+      const backendUrl = 'https://pickdeldia-mvp-1.onrender.com'; // Your Render backend base URL
+      const aiEndpoint = `${backendUrl}/generate-ai-response`; // The new AI endpoint
+
+      const response = await fetch(aiEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage }),
+        // --- IMPORTANT: Change 'message' to 'prompt' to match backend ---
+        body: JSON.stringify({ prompt: userMessage }), 
       });
+
+      // Check if the response was successful (status code 2xx)
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
 
       const data = await response.json();
 
-      // Agrega respuesta del bot que viene del backend
+      // --- IMPORTANT: Change 'data.reply' to 'data.ai_response' ---
+      // Add bot's response from the backend
       setMessages(prev => [
         ...prev,
-        { id: Date.now() + 1, text: data.reply, sender: 'bot' },
+        { id: Date.now() + 1, text: data.ai_response, sender: 'bot' }, 
       ]);
     } catch (error) {
-      // En caso de error, muestra un mensaje básico
+      console.error("Error sending message to AI backend:", error);
+      // In case of error, show a basic message to the user
       setMessages(prev => [
         ...prev,
-        { id: Date.now() + 1, text: 'Error: no pude contactar al servidor.', sender: 'bot' },
+        { id: Date.now() + 1, text: `Error: ${error.message || 'No pude contactar al servidor o hubo un problema.'}`, sender: 'bot' },
       ]);
+    } finally {
+      setLoading(false); // Stop loading regardless of success or failure
     }
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !loading) { // Prevent sending if loading
       e.preventDefault();
       handleSend();
     }
@@ -60,7 +78,7 @@ export default function Chat() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Contenedor mensajes con scroll y altura fija */}
+      {/* Messages container with scroll and fixed height */}
       <div className="flex-grow bg-gray-900 rounded-md p-4 overflow-y-auto max-h-[400px] scrollbar-thin scrollbar-thumb-pink-500 scrollbar-track-gray-700">
         {messages.map((msg) => (
           <div
@@ -77,25 +95,29 @@ export default function Chat() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input + botón enviar */}
+      {/* Input + send button */}
       <div className="mt-4 flex">
         <input
           type="text"
-          placeholder="Escribe aquí..."
+          placeholder={loading ? "Pensando..." : "Escribe aquí..."} // Placeholder changes when loading
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
+          disabled={loading} // Disable input when loading
           className="flex-grow rounded-l-md p-3 text-black focus:outline-none focus:ring-2 focus:ring-pink-500"
         />
         <button
           onClick={handleSend}
-          className="bg-pink-500 hover:bg-pink-600 text-white font-bold px-6 rounded-r-md transition"
+          disabled={loading} // Disable button when loading
+          className={`bg-pink-500 text-white font-bold px-6 rounded-r-md transition 
+            ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-pink-600 cursor-pointer'}`}
         >
-          Enviar
+          {loading ? 'Enviando...' : 'Enviar'} {/* Button text changes when loading */}
         </button>
       </div>
     </div>
   );
-} 
+}
+
 
 
