@@ -29,7 +29,7 @@ export default function Chat() {
     setInput('');
 
     try {
-      const response = await fetch('https://pickdeldia-mvp-1.onrender.com', {
+      const response = await fetch('https://pickdeldia-mvp-1.onrender.com/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userMessage }),
