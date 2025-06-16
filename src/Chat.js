@@ -15,28 +15,40 @@ export default function Chat() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (input.trim() === '') return;
+
+    const userMessage = input;
 
     // Agrega mensaje del usuario
     setMessages(prev => [
       ...prev,
-      { id: Date.now(), text: input, sender: 'user' },
+      { id: Date.now(), text: userMessage, sender: 'user' },
     ]);
-    const userMessage = input;
+
     setInput('');
 
-    // Respuesta automática del bot
-    setTimeout(() => {
+    try {
+      const response = await fetch('https://pickdeldia-mvp-1.onrender.com', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage }),
+      });
+
+      const data = await response.json();
+
+      // Agrega respuesta del bot que viene del backend
       setMessages(prev => [
         ...prev,
-        {
-          id: Date.now() + 1,
-          text: `Bot dice: Recibí tu mensaje "${userMessage}"`,
-          sender: 'bot',
-        },
+        { id: Date.now() + 1, text: data.reply, sender: 'bot' },
       ]);
-    }, 1000);
+    } catch (error) {
+      // En caso de error, muestra un mensaje básico
+      setMessages(prev => [
+        ...prev,
+        { id: Date.now() + 1, text: 'Error: no pude contactar al servidor.', sender: 'bot' },
+      ]);
+    }
   };
 
   const handleKeyDown = (e) => {
